@@ -1,0 +1,132 @@
+---
+title: "Anti-Trans Bills in the U.S., 2021-23"
+author: "Kenan Ince"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(legiscanR)
+library(readr)
+library(openintro)
+library(broom)
+library(mosaic)
+library(readxl)
+library(readr)
+library(ggplot2)
+library(tidyverse)
+library(janitor)
+library(infer)
+library(dplyr)
+```
+
+## Importing and Merging the Data
+
+We download .csv files from the website [tracktranslegislation.com](https://tracktranslegislation.com), which in turn obtains the data from [LegiScan](https://legiscan.com).
+
+**All of the data (including the merged and filtered data used in this analysis) can be found [here](https://drive.google.com/drive/folders/11l0qhqxij9aPU_RJFEuhgcltumTa7ZKS?usp=sharing).**
+
+```{r import, echo=FALSE}
+bills_2021 <- read_csv("data/2021 Anti-Trans Bills _ Track Trans Legislation.csv")
+bills_2022 <- read_csv("data/2022 Anti-Trans Bills _ Track Trans Legislation.csv")
+bills_2023 <- read_csv("data/2023 Anti-Trans Bills _ Track Trans Legislation.csv")
+bills_2021$year <- format(bills_2021$Date, "%Y")
+bills_2022$year <- format(bills_2022$Date, "%Y")
+bills_2023$year <- format(bills_2023$Date, "%Y")
+bills_21_23 <- rbind(bills_2021, bills_2022, bills_2023)
+summary(bills_21_23)
+```
+
+## Cleaning the Data
+
+We note that, for example, the $2021$ dataset includes some bills passed in January $2022$, so we eliminate duplicate bills:
+
+```{r nodupes, echo=FALSE}
+bills_21_23 <- bills_21_23[!duplicated(bills_21_23), ]
+summary(bills_21_23)
+```
+
+Note that this decreases the number of bills in our dataset from $791$ to $762$.
+
+Next, note that the bills whose status is labeled `Introduced*` are those that failed to meet their state's "crossover deadline", the date by which a bill must pass out of the chamber in which it was introduced and to the other chamber (e.g. State House vs. Senate). According to the site [Track Trans Legislation](https://www.tracktranslegislation.com/), a bill that is not passed in its initial chamber by the crossover deadline "faces high procedural hurdles in order to move forward." Thus, we wish to classify these bills (at least for the current session) as "dead/failed".
+
+```{r echo=FALSE}
+bills_21_23$Status[bills_21_23$Status == "Introduced*"] <- "Dead/Failed"
+glimpse(bills_21_23)
+```
+
+## Bill Type vs. Status
+
+We now summarize the relationships of the type of bill to its status to determine whether specific types of bills were more likely to succeed.
+
+```{r}
+tabyl(bills_21_23, `Bill Type`, Status) %>%
+  adorn_totals(where = c("row", "col"))
+```
+
+We see what percentage of each bill status was made up of each bill type:
+
+```{r}
+tabyl(bills_21_23, `Bill Type`, Status) %>%
+  adorn_totals() %>%
+    adorn_percentages("col") %>%
+    adorn_pct_formatting()
+```
+
+And what percentage of each bill type had each status:
+
+```{r}
+tabyl(bills_21_23, `Bill Type`, Status) %>%
+  adorn_totals() %>%
+    adorn_percentages("row") %>%
+    adorn_pct_formatting()
+```
+
+It seems like bills related to "ID updates" (i.e., preventing trans and nonbinary people from having their IDs show their correct gender identity), "public facilities" (often preventing trans people from using the bathroom that fits their gender identity), and "youth athletics" (i.e., preventing trans girls from competing on girls' sports teams) are most likely to pass.
+
+We represent this data in a side-by-side bar chart:
+
+```{r}
+ggplot(bills_21_23, aes(fill = Status, x = `Bill Type`)) +
+  geom_bar()
+ggplot(bills_21_23, aes(x = Status, fill = `Bill Type`)) +
+  geom_bar()
+```
+
+## Is $2023$ the Year of Transphobia?
+
+A common claim in the news media, and a common feeling among trans and nonbinary folks, is that $2023$ is by far the worst recent year for anti-trans legislation. Let's investigate the following questions:
+
+1.  What types of bills were proposed more often in $2023$ than in $2021$ or $2022$?
+2.  What types of bills were *passed* more often in $2023$ than in $2021$ or $2022$?
+3.  What states introduced/passed the majority of anti-trans bills in $2023$, and are these the same states as in previous years?
+
+We start by creating a data frame that shows only the bills passed, vetoed (hence passed by both chambers of the legislature), and/or signed and enacted between 2021 and 2023, as well as in each year and in the years preceding $2023$.
+
+```{r}
+passed <- filter(bills_21_23, Status == "Passed" | Status == "Signed/Enacted" | Status == "Vetoed")
+passed_21 <- filter(bills_2021, Status == "Passed" | Status == "Signed/Enacted" | Status == "Vetoed")
+passed_22 <- filter(bills_2022, Status == "Passed" | Status == "Signed/Enacted" | Status == "Vetoed")
+passed_23 <-  filter(bills_2023, Status == "Passed" | Status == "Signed/Enacted" | Status == "Vetoed")
+bills_21_22 <- rbind(bills_2021, bills_2022)
+passed_21_22 <- rbind(passed_21, passed_22)
+passed_table_pct <- tabyl(passed, `Bill Type`, year) %>%
+  adorn_totals() %>%
+    adorn_percentages("row") %>%
+    adorn_pct_formatting()
+passed_table <- tabyl(passed, `Bill Type`, year) %>%
+  adorn_totals(where = c("row", "col"))
+passed_table
+passed_table_21_22 <- tabyl(passed_21_22, `Bill Type`, year) %>%
+  adorn_totals() %>%
+    adorn_percentages("row") %>%
+    adorn_pct_formatting()
+passed_table_23 <- tabyl(passed_23, `Bill Type`, year) %>%
+  adorn_totals() %>%
+    adorn_percentages("row") %>%
+    adorn_pct_formatting()
+passed_year_plot <- ggplot(passed, aes(x = year, fill = `Bill Type`)) +
+  geom_bar()
+passed_year_plot
+```
