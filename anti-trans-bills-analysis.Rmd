@@ -6,13 +6,14 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 library(legiscanR)
 library(readr)
 library(openintro)
 library(broom)
 library(mosaic)
 library(readxl)
+library(stringr)
 library(readr)
 library(ggplot2)
 library(tidyverse)
@@ -23,92 +24,170 @@ library(dplyr)
 
 ## Importing and Merging the Data
 
-We download .csv files from the website [tracktranslegislation.com](https://tracktranslegislation.com), which in turn obtains the data from [LegiScan](https://legiscan.com).
+We download .csv files from the website [tracktranslegislation.com](https://tracktranslegislation.com), which in turn obtains the data from [LegiScan](https://legiscan.com). This data is up-to-date from 2021 through April 21, 2023.
+
+In order to track bills prior to 2021 in order to compare the number of bills per year, we create a table using data from the ACLU's ["Past Legislation Affecting LGBT Rights Across the Country" pages for 2018, 2019, and 2020](https://www.aclu.org/past-legislation-affecting-lgbt-rights-across-country-2018). This data has distinct variable names and organization, so we also modify the ACLU data to match the Track Trans Legislation data as closely as possible.
+
+For example, bills that were withdrawn, not passed by the end of a given legislative session, explicitly listed as "Dead", or were recommended against by a committee and did not proceed in the legislature were relabeled "Dead" (at least for that year). The exception was when the bill description is specifically listed as "hearing scheduled", "referred to committee", carried over from another year, or otherwise makes clear that the bill is still under consideration, in which case "Introduced" or "Crossed Over" (depending on whether the bill had been passed by at least one chamber) were used.
+
+There is, of course, some uncertainty introduced by this human-guided attempt to map the categories used by the ACLU onto those used by Track Trans Legislation. Feedback is welcome.
+
+We only include bills in categories tracked by both data sources; this leaves out, for example, bills preventing localities from passing anti-discrimination ordinances within a state. We use a broad reading of the "religious freedom" category to include bills that allow for people with "sincerely-held religious beliefs" in that state to challenge nondiscrimination laws, discriminate against LGBTQ+ people, refuse to provide healthcare to LGBTQ+ people, refuse to provide adoption services to LGBTQ+ people; discriminate against married LGBTQ+ people, and receive funding for discriminatory student groups at public universities, among others.
 
 **All of the data (including the merged and filtered data used in this analysis) can be found [on GitHub](https://github.com/kaince/anti-trans-bills)).**
 
-```{r import, echo=FALSE}
+```{r import, echo=FALSE, warning=FALSE, message=FALSE}
+bills_18_20 <- read_excel("data/bills_2018-2020.xlsx", 
+    col_types = c("date", "text", "text", 
+        "text", "text", "text", "numeric"))
 bills_2021 <- read_csv("data/2021 Anti-Trans Bills _ Track Trans Legislation.csv")
 bills_2022 <- read_csv("data/2022 Anti-Trans Bills _ Track Trans Legislation.csv")
 bills_2023 <- read_csv("data/2023 Anti-Trans Bills _ Track Trans Legislation.csv")
 bills_2021$year <- format(bills_2021$Date, "%Y")
 bills_2022$year <- format(bills_2022$Date, "%Y")
 bills_2023$year <- format(bills_2023$Date, "%Y")
+bills_18_20$year <- format(bills_18_20$Date, "%Y")
 bills_21_23 <- rbind(bills_2021, bills_2022, bills_2023)
-summary(bills_21_23)
 ```
 
 ## Cleaning the Data
 
-We note that, for example, the $2021$ dataset includes some bills passed in January $2022$, so we eliminate duplicate bills:
+First, the $2018$-$2020$ ACLU datasets code state names by their two-letter abbreviations (e.g., "AZ" instead of "Arizona"), while Track Trans Legislation uses full names. So we use an R function to convert full names to abbreviations in the whole dataset. We verify that the only "State" values that were not successfully converted to abbreviations are for bills that were proposed at the federal level.
 
-```{r nodupes, echo=FALSE}
-bills_21_23 <- bills_21_23[!duplicated(bills_21_23), ]
-summary(bills_21_23)
+```{r echo=FALSE, message=FALSE}
+bills_21_23$State <- setNames(state.abb, state.name)[bills_21_23$State]
+bills_18_23 <- rbind(bills_18_20, bills_21_23)
+glimpse(bills_18_23$State)
 ```
 
-Note that this decreases the number of bills in our dataset from $791$ to $762$.
+We note that, for example, the $2021$ dataset includes some bills passed in January $2022$, so we eliminate duplicate bills:
+
+```{r nodupes, echo=FALSE, message=FALSE}
+bills_18_23 <- bills_18_23[!duplicated(bills_18_23), ]
+summary(bills_18_23)
+```
+
+Note that this decreases the number of bills in our dataset from $927$ to $893$.
 
 Next, note that the bills whose status is labeled `Introduced*` are those that failed to meet their state's "crossover deadline", the date by which a bill must pass out of the chamber in which it was introduced and to the other chamber (e.g. State House vs. Senate). According to the site [Track Trans Legislation](https://www.tracktranslegislation.com/), a bill that is not passed in its initial chamber by the crossover deadline "faces high procedural hurdles in order to move forward." Thus, we wish to classify these bills (at least for the current session) as "dead/failed".
 
+Moreover, one bill's status is listed as "Posted", Kentucky's HB132 in $2020$. [LegiScan research](https://legiscan.com/KY/bill/HB132/2020) reveals that this bill died in committee, so we update its status to `Dead/Failed`.
+
+The following shows the structure of the resulting, cleaned dataset:
+
 ```{r echo=FALSE}
-bills_21_23$Status[bills_21_23$Status == "Introduced*"] <- "Dead/Failed"
-glimpse(bills_21_23)
+bills_18_23$Status[bills_18_23$Status == "Introduced*"] <- "Dead/Failed"
+bills_18_23$Status[bills_18_23$Status == "Posted"] <- "Dead/Failed"
+glimpse(bills_18_23)
+```
+
+There is one last formatting issue to address: the `Status` variable could take on any of the values `Dead/Failed`, `Dead/Failed`, and `Dead/Failed` (note the additional spaces). We combine them all into one value.
+
+```{r echo=FALSE, warning=FALSE}
+bills_18_23 <- bills_18_23 %>% mutate(Status = str_squish(Status))
+bills_2018 <- filter(bills_18_23, year == "2018")
+bills_2019 <- filter(bills_18_23, year == "2019")
+bills_2020 <- filter(bills_18_23, year == "2020")
 ```
 
 ## Bill Type vs. Status
 
 We now summarize the relationships of the type of bill to its status to determine whether specific types of bills were more likely to succeed.
 
-```{r}
-tabyl(bills_21_23, `Bill Type`, Status) %>%
+Note that **crossing over** refers to a bill being passed out of one state legislative chamber (either the State House or State Senate) and moving forward for consideration in the other chamber. Thus, a bill that has crossed over suggests majority support for the bill in at least one chamber.
+
+```{r echo=FALSE}
+tabyl(bills_18_23, `Bill Type`, Status) %>%
   adorn_totals(where = c("row", "col"))
 ```
 
 We see what percentage of each bill status was made up of each bill type:
 
-```{r}
-tabyl(bills_21_23, `Bill Type`, Status) %>%
+```{r echo=FALSE}
+status_by_type <- tabyl(bills_18_23, `Bill Type`, Status) %>%
   adorn_totals() %>%
     adorn_percentages("col") %>%
     adorn_pct_formatting()
+status_by_type
 ```
 
 And what percentage of each bill type had each status:
 
-```{r}
-tabyl(bills_21_23, `Bill Type`, Status) %>%
+```{r echo=FALSE}
+type_by_status <- tabyl(bills_18_23, `Bill Type`, Status) %>%
   adorn_totals() %>%
     adorn_percentages("row") %>%
     adorn_pct_formatting()
+type_by_status
 ```
 
-It seems like bills related to "ID updates" (i.e., preventing trans and nonbinary people from having their IDs show their correct gender identity), "public facilities" (often preventing trans people from using the bathroom that fits their gender identity), and "youth athletics" (i.e., preventing trans girls from competing on girls' sports teams) are most likely to pass.
+It seems like bills related to "ID updates" (i.e., preventing trans and nonbinary people from having their IDs show their correct gender identity), "public facilities" (often preventing trans people from using the bathroom that fits their gender identity), and "youth athletics" (i.e., preventing trans girls from competing on girls' sports teams) are most likely to be signed by their state's governor and enacted into law (after passing both legislative chambers).
 
 We represent this data in a side-by-side bar chart:
 
-```{r}
-ggplot(bills_21_23, aes(fill = Status, x = `Bill Type`)) +
+```{r echo=FALSE}
+ggplot(bills_18_23, aes(fill = Status, x = `Bill Type`)) +
   geom_bar()
-ggplot(bills_21_23, aes(x = Status, fill = `Bill Type`)) +
+ggplot(bills_18_23, aes(x = Status, fill = `Bill Type`)) +
   geom_bar()
 ```
 
-## Is $2023$ the Year of Transphobia?
+### Did the type of bill impact its likelihood of being passed and/or signed?
+
+However, the observed trends could simply relate to the fact that the largest *numbers* of bills nationwide were proposed in those categories. We make the following null and alternative hypotheses:
+
+$H_0$: The proportions of anti-trans bills passed in each category nationwide were equal.
+
+$H_A$: The proportions of anti-trans bills passed in each category nationwide were not equal.
+
+In order to simplify the following charts and analysis, we combine certain bill statuses into categories: bills that have crossed over, passed, or were signed and enacted have a significant chance of impacting the lives of trans and nonbinary people in that state, while bills that were vetoed, died, or failed have no chance of impacting lives. Bills listed simply as "introduced" may or may not have the support to eventually pass, but since they are not currently impacting the ability of trans/nonbinary people to access healthcare, play sports, etc., we count them as "Not Passed".
+
+```{r}
+bills_mutate <- mutate(bills_18_23, pass = as_factor(ifelse(Status == "Passed" | Status == "Signed/Enacted" | Status == "Crossed Over", "Passed", "Not Passed")))
+bills_mutate
+```
+
+Now, we want to see a breakdown of the types of bills that did and didn't pass.
+
+```{r}
+prop_passed <- tabyl(bills_mutate, `Bill Type`, pass) %>%
+  adorn_totals("col") %>%
+  as_data_frame
+prop_passed <- prop_passed %>% 
+  mutate(Proportion = `Passed`/`Total`) %>%
+  as_data_frame
+prop_passed
+```
+
+We plot the proportion of each type of bill that was passed:
+
+```{r}
+ggplot(prop_passed, aes(x = `Bill Type`, y = Proportion)) +
+  geom_col()
+```
+
+## Is 2023 the Year of Transphobia?
 
 A common claim in the news media, and a common feeling among trans and nonbinary folks, is that $2023$ is by far the worst recent year for anti-trans legislation. Let's investigate the following questions:
 
-1.  What types of bills were proposed more often in $2023$ than in $2021$ or $2022$?
-2.  What types of bills were *passed* more often in $2023$ than in $2021$ or $2022$?
-3.  What states introduced/passed the majority of anti-trans bills in $2023$, and are these the same states as in previous years?
+1.  What total number of anti-trans bills were proposed each year from $2018$ to $2023$?
+2.  What total number of anti-trans bills were *passed* each of these years? In $2023$, since the session is not over in many states, we run the analysis in two ways: including both bills that crossed over and bills that were signed/enacted, and only considering bills which were signed/enacted.
+3.  What types of anti-trans bills were proposed more often in $2023$ than in previous years?
+4.  What types of anti-trans bills were *passed* more often in $2023$?
+5.  What states introduced/passed the majority of anti-trans bills in $2023$, and are these the same states as in previous years?
+6.  Are most anti-trans bills passed during the beginning of legislative sessions, indicating that such bills are a high priority for the state legislature?
 
-We start by creating a data frame that shows only the bills passed, vetoed (hence passed by both chambers of the legislature), and/or signed and enacted between 2021 and 2023, as well as in each year and in the years preceding $2023$.
+We start by creating a data frame that shows only the bills passed, crossed over (hence passed by at least one chamber of the legislature and not yet dead), and/or signed and enacted between 2021 and 2023, as well as in each year and in the years preceding $2023$.
 
 ```{r}
-passed <- filter(bills_21_23, Status == "Passed" | Status == "Signed/Enacted" | Status == "Vetoed")
-passed_21 <- filter(bills_2021, Status == "Passed" | Status == "Signed/Enacted" | Status == "Vetoed")
-passed_22 <- filter(bills_2022, Status == "Passed" | Status == "Signed/Enacted" | Status == "Vetoed")
-passed_23 <-  filter(bills_2023, Status == "Passed" | Status == "Signed/Enacted" | Status == "Vetoed")
+passed <- filter(bills_18_23, Status == "Passed" | Status == "Signed/Enacted" | Status == "Crossed Over")
+passed_18 <- filter(bills_2018, Status == "Passed" | Status == "Signed/Enacted" | Status == "Crossed Over")
+passed_21 <- filter(bills_2021, Status == "Passed" | Status == "Signed/Enacted" | Status == "Crossed Over")
+passed_22 <- filter(bills_2022, Status == "Passed" | Status == "Signed/Enacted" | Status == "Crossed Over")
+passed_23 <-  filter(bills_2023, Status == "Passed" | Status == "Signed/Enacted" | Status == "Crossed Over")
+passed_19 <-  filter(bills_2019, Status == "Passed" | Status == "Signed/Enacted" | Status == "Crossed Over")
+passed_21 <-  filter(bills_2021, Status == "Passed" | Status == "Signed/Enacted" | Status == "Crossed Over")
+passed_20 <-  filter(bills_2020, Status == "Passed" | Status == "Signed/Enacted" | Status == "Crossed Over")
 bills_21_22 <- rbind(bills_2021, bills_2022)
 passed_21_22 <- rbind(passed_21, passed_22)
 passed_table_pct <- tabyl(passed, `Bill Type`, year) %>%
@@ -130,3 +209,28 @@ passed_year_plot <- ggplot(passed, aes(x = year, fill = `Bill Type`)) +
   geom_bar()
 passed_year_plot
 ```
+
+To emphasize the change in the number of bills that have a chance of passing or have already been passed over time, we combine all the years 2017-2022 and compare them to 2023.
+
+```{r}
+passed_vs_23 <- passed %>% 
+  mutate(ThisYear = as_factor(ifelse(year > 2022, 
+                                     "2023", "2018-22")))
+passed_vs_23_dodge <- ggplot(passed_vs_23, aes(x = ThisYear, fill = `Bill Type`)) +
+  geom_bar(position = "dodge")
+passed_vs_23_dodge
+passed_vs_23 <- ggplot(passed_vs_23, aes(x = ThisYear, fill = `Bill Type`)) +
+  geom_bar()
+passed_vs_23
+passed_18_22 <- rbind(passed_18, passed_19, passed_20, passed_21, passed_22)
+passed_18_22_frame <- tabyl(passed_18_22, `Bill Type`) %>% as.data.frame()
+passed_23_frame <- tabyl(passed_23, `Bill Type`) %>% as.data.frame()
+```
+
+In order to extract information on state legislature convening and adjourning dates, we download the schedule of state legislature meeting dates from the [National Conference of State Legislatures](https://documents.ncsl.org/wwwncsl/About-State-Legislatures/2023_session_calendar_1.pdf) website, then use the [Tabula tool](https://tabula.technology/) to extract the data into a .csv file, making some manual edits. Finally, we load the .csv file into RStudio.
+
+```{r}
+session_calendar <- read_csv("data/session-calendar.csv")
+```
+
+## Impact of Anti-Trans Bills on Trans and Nonbinary Mental Health
