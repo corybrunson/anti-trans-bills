@@ -3,12 +3,14 @@ title: "Anti-Trans Bills in the U.S., 2021-23"
 author: "Kenan Ince"
 date: "`r Sys.Date()`"
 output: html_document
+bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
-library(legiscanR)
-library(readr)
+library(tidyverse)
+library(gt)
+library(gtExtras)
 library(openintro)
 library(broom)
 library(mosaic)
@@ -16,21 +18,36 @@ library(readxl)
 library(stringr)
 library(readr)
 library(ggplot2)
-library(tidyverse)
 library(janitor)
 library(infer)
 library(dplyr)
 ```
 
+# Introduction
+
+Americans who identify as lesbian, gay, bisexual, transgender, queer, or many other identities under the queer and trans umbrella (LGBTQ+ folks for short) have long been targeted by conservative groups in the U.S. Nonetheless, the mid-2010s seemed to many to be a time of increasing acceptance of LGBTQ+ identities; the *Time* magazine article "The Transgender Tipping Point," for example, quoted actress and advocate Laverne Cox as saying, "We are in a place now where more and more trans people want to come forward and say, 'This is who I am.' [...] More of us are living visibly and pursuing our dreams visibly, so people can say, 'Oh yeah, I know someone who is trans.' When people have points of reference that are humanizing, that demystifies difference [@katysteinmetz2014]."
+
+However, after the 2015 Supreme Court ruling in *Obergefell v. Hodges* legalizing "same-sex marriage" (though some of those who were married after *Obergefell* identify as trans or nonbinary), conservative groups have sought to target LGBTQ+ people through "religious freedom" laws allowing for discrimination against "same-sex couples", and more recently, transgender people, especially transgender youth. Despite the increasing prevalence of trans and nonbinary people in American society, as well as the recent legislative and political attacks on these groups, relatively few academic studies have been conducted on the impact of the surge of anti-trans legislation since 2019. In this article, we attempt to collate data from various sources to analyze the growth, types, progress, and impacts of various anti-trans and -nonbinary bills from 2018 to 2023.
+
+We emphasize these years because, in 2019, the conservative Heritage Foundation and conservative Christian Family Policy Alliance distributed a model strategy for banning gender-affirming care to state legislators at a conference [@harvardlawreview2021]. In 2020, a conference attendee and South Dakota legislator published a version of the bill seeking to criminalize doctors' provision of puberty blockers and hormones to transgender patients under the age of 16. Similar bills followed the same year: in Colorado, Florida, Illinois, Iowa, Kentucky, Missouri, Oklahoma, and South Carolina [@bauer2020]. Though the 2020 bills failed, the language in bills in South Carolina, South Dakota, and Arkansas in 2021 attempting to allow physicians to refuse to treat transgender children shared similar language, which originated in a "Model Conscience Protection Act" published by Kevin Theriot and Ken Connelly of the conservative Alliance Defending Freedom [@theriot]. As we will see below, more and more bills are being proposed, and more are passing, every year since.
+
+These bills go against studies showing that transgender children between the age of 5 and 12 viewed their gender identities similarly to cisgender children [@olson2015], among other academic studies. The leading association of pediatricians in the United States recommends "that youth who identify as [transgender] have access to comprehensive, gender-affirming, and developmentally appropriate health care that is provided in a safe and inclusive clinical space...[and] that pediatricians have a role in advocating for policies and laws that protect youth who identify as [transgender] from discrimination and violence [@rafferty2018]."
+
+*Gender-affirming healthcare* is defined by the World Health Organization as multiple social, psychological, behavioral, and medical treatments "designed to support and affirm an individual's gender identity" when it differs from their assigned gender at birth [@gonzález2023]. Usually, gender-affirming care begins with *social transition*, in which a person begins to present as their correct, felt gender identity in public. Next, *puberty blockers* may be used to delay pubescent changes that do not align with the individual's gender identity, and *hormone therapy* may be used to align with their gender identity, some of whose effects are reversible. According to guidelines from major medical organizations, hormone therapy should be started once pubescent changes begin. Finally, usually for people over 18, gender-affirming surgeries (including top or bottom surgery) may be considered. If surgeries are offered to teens, multiple health professionals must first evaluate the teen.
+
+Recent bills target all aspects of gender-affirming healthcare, mostly for people under 18 but increasingly for those under 21 or even all adults, as with the 2023 ruling by Missouri's Attorney General Andrew Bailey that the state's consumer protection law prevents all Missourians from receiving puberty blockers, hormone therapy, or surgery unless they meet very narrow guidelines [@acluofmissouri2023].
+
+We briefly describe how each aspect of gender-affirming healthcare is targeted by the categories of bills used in the data analysis below. Social transition is targeted through `youth athletics` bills preventing young people from competing on sports teams under their identified gender. `ID requirements` prevent the changing of the "sex" listed on birth certificates, driver's licenses, and other government IDs.`Public facilities` laws prevent all trans people from using restrooms and other gendered public facilities that match their gender identity. `Schools/education` laws vary but include laws banning teachers from using students' correct pronouns at all or without parental permission, discussing queer and trans/nonbinary identities in the classroom, and displaying items such as pride flags supporting queer and trans identities, among others.
+
+`Drag performance` laws (perhaps better categorized as "gender expression laws"), a recent development as of 2023, ban drag shows or "male or female impersonators" in certain circumstances, such as "in the presence of minors" (Tennessee's Senate Bill 3) or on Sundays from 1 a.m. to 12 p.m. (Arizona's SB 1030). Laws barring municipalities from passing `nondiscrimination protections`, as well as `religious freedom` laws, legalize discrimination in certain circumstances against LGBTQ+ people, particularly by those with a "strongly felt religious conviction" that being LGBTQ+ is wrong. Finally, `healthcare` laws prevent gender-affirming care for various groups in various ways, often including bans on hormone therapy and surgery for those under 18.
+
+# Methods
+
 ## Importing and Merging the Data
 
-We download .csv files from the website [tracktranslegislation.com](https://tracktranslegislation.com), which in turn obtains the data from [LegiScan](https://legiscan.com). This data is up-to-date from 2021 through April 21, 2023.
-
-In order to track bills prior to 2021 in order to compare the number of bills per year, we create a table using data from the ACLU's ["Past Legislation Affecting LGBT Rights Across the Country" pages for 2018, 2019, and 2020](https://www.aclu.org/past-legislation-affecting-lgbt-rights-across-country-2018). This data has distinct variable names and organization, so we also modify the ACLU data to match the Track Trans Legislation data as closely as possible.
+We download .csv files from the website [tracktranslegislation.com](https://tracktranslegislation.com) [@translegislationtracker], which in turn obtains the data from [LegiScan](https://legiscan.com). This data is up-to-date from 2021 through April 21, 2023. In order to track bills prior to 2021, we use data from the ACLU's ["Past Legislation Affecting LGBT Rights Across the Country" pages for 2018, 2019, and 2020](https://www.aclu.org/past-legislation-affecting-lgbt-rights-across-country-2018) [@americancivillibertiesunion2018, @americancivillibertiesunion2019, @americancivillibertiesunion2020]. Note that the 2020 page was last updated on March 20, 2020, since many state legislatures were suspended or closed during the first year of the COVID-19 pandemic; the ACLU page promised to "update the tracker as major new developments occur[red] ." This data has distinct variable names and organization, so we also modify the ACLU data to match the Track Trans Legislation data as closely as possible.
 
 For example, bills that were withdrawn, not passed by the end of a given legislative session, explicitly listed as "Dead", or were recommended against by a committee and did not proceed in the legislature were relabeled "Dead" (at least for that year). The exception was when the bill description is specifically listed as "hearing scheduled", "referred to committee", carried over from another year, or otherwise makes clear that the bill is still under consideration, in which case "Introduced" or "Crossed Over" (depending on whether the bill had been passed by at least one chamber) were used.
-
-There is, of course, some uncertainty introduced by this human-guided attempt to map the categories used by the ACLU onto those used by Track Trans Legislation. Feedback is welcome.
 
 We only include bills in categories tracked by both data sources; this leaves out, for example, bills preventing localities from passing anti-discrimination ordinances within a state. We use a broad reading of the "religious freedom" category to include bills that allow for people with "sincerely-held religious beliefs" in that state to challenge nondiscrimination laws, discriminate against LGBTQ+ people, refuse to provide healthcare to LGBTQ+ people, refuse to provide adoption services to LGBTQ+ people; discriminate against married LGBTQ+ people, and receive funding for discriminatory student groups at public universities, among others.
 
@@ -54,28 +71,24 @@ bills_21_23 <- rbind(bills_2021, bills_2022, bills_2023)
 
 First, the $2018$-$2020$ ACLU datasets code state names by their two-letter abbreviations (e.g., "AZ" instead of "Arizona"), while Track Trans Legislation uses full names. So we use an R function to convert full names to abbreviations in the whole dataset. We verify that the only "State" values that were not successfully converted to abbreviations are for bills that were proposed at the federal level.
 
-```{r echo=FALSE, message=FALSE}
+```{r message=FALSE, include=FALSE}
 bills_21_23$State <- setNames(state.abb, state.name)[bills_21_23$State]
 bills_18_23 <- rbind(bills_18_20, bills_21_23)
 glimpse(bills_18_23$State)
 ```
 
-We note that, for example, the $2021$ dataset includes some bills passed in January $2022$, so we eliminate duplicate bills:
+We note that, for example, the $2021$ dataset includes some bills passed in January $2022$, so we eliminate duplicate bills.
 
-```{r nodupes, echo=FALSE, message=FALSE}
+```{r echo=FALSE, message=FALSE, include=FALSE}
 bills_18_23 <- bills_18_23[!duplicated(bills_18_23), ]
 summary(bills_18_23)
 ```
 
-Note that this decreases the number of bills in our dataset from $927$ to $893$.
-
-Next, note that the bills whose status is labeled `Introduced*` are those that failed to meet their state's "crossover deadline", the date by which a bill must pass out of the chamber in which it was introduced and to the other chamber (e.g. State House vs. Senate). According to the site [Track Trans Legislation](https://www.tracktranslegislation.com/), a bill that is not passed in its initial chamber by the crossover deadline "faces high procedural hurdles in order to move forward." Thus, we wish to classify these bills (at least for the current session) as "dead/failed".
+This decreases the number of bills in our dataset from $927$ to $893$. Next, note that the bills whose status is labeled `Introduced*` are those that failed to meet their state's "crossover deadline", the date by which a bill must pass out of the chamber in which it was introduced and to the other chamber (e.g. State House vs. Senate). According to the site [Track Trans Legislation](https://www.tracktranslegislation.com/), a bill that is not passed in its initial chamber by the crossover deadline "faces high procedural hurdles in order to move forward." Thus, we wish to classify these bills (at least for the current session) as "dead/failed".
 
 Moreover, one bill's status is listed as "Posted", Kentucky's HB132 in $2020$. [LegiScan research](https://legiscan.com/KY/bill/HB132/2020) reveals that this bill died in committee, so we update its status to `Dead/Failed`.
 
-The following shows the structure of the resulting, cleaned dataset:
-
-```{r echo=FALSE}
+```{r echo=FALSE, include=FALSE}
 bills_18_23$Status[bills_18_23$Status == "Introduced*"] <- "Dead/Failed"
 bills_18_23$Status[bills_18_23$Status == "Posted"] <- "Dead/Failed"
 glimpse(bills_18_23)
@@ -90,6 +103,8 @@ bills_2019 <- filter(bills_18_23, year == "2019")
 bills_2020 <- filter(bills_18_23, year == "2020")
 ```
 
+# Results
+
 ## Bill Type vs. Status
 
 We now summarize the relationships of the type of bill to its status to determine whether specific types of bills were more likely to succeed.
@@ -98,38 +113,66 @@ Note that **crossing over** refers to a bill being passed out of one state legis
 
 ```{r echo=FALSE}
 tabyl(bills_18_23, `Bill Type`, Status) %>%
-  adorn_totals(where = c("row", "col"))
+  adorn_totals(where = c("row", "col")) %>%
+  gt() %>% 
+   
+  tab_header(title = "Bill Status by Bill Type")
 ```
 
 We see what percentage of each bill status was made up of each bill type:
 
 ```{r echo=FALSE}
 status_by_type <- tabyl(bills_18_23, `Bill Type`, Status) %>%
-  adorn_totals() %>%
-    adorn_percentages("col") %>%
-    adorn_pct_formatting()
+  adorn_totals(where = c("row", "col")) %>%
+    adorn_percentages() %>%
+    adorn_pct_formatting() %>%
+    gt() %>% 
+   
+  tab_header(title = "Percentage of Bills with Each Status, by Type")
+
 status_by_type
 ```
 
 And what percentage of each bill type had each status:
 
 ```{r echo=FALSE}
-type_by_status <- tabyl(bills_18_23, `Bill Type`, Status) %>%
-  adorn_totals() %>%
-    adorn_percentages("row") %>%
-    adorn_pct_formatting()
+type_by_status <- tabyl(bills_18_23, Status, `Bill Type`) %>%
+  adorn_totals(where = c("row", "col")) %>%
+    adorn_percentages() %>%
+    adorn_pct_formatting() %>%
+    gt() %>% 
+   
+        tab_header(title = "Percentage of Bills of Each Type, by Status")
 type_by_status
 ```
 
 It seems like bills related to "ID updates" (i.e., preventing trans and nonbinary people from having their IDs show their correct gender identity), "public facilities" (often preventing trans people from using the bathroom that fits their gender identity), and "youth athletics" (i.e., preventing trans girls from competing on girls' sports teams) are most likely to be signed by their state's governor and enacted into law (after passing both legislative chambers).
 
-We represent this data in a side-by-side bar chart:
+However, of all the bills that were signed and enacted, most of them by far were related to youth athletics (over double the number of bills from any other category), followed by healthcare, suggesting that more bills were proposed in those categories.
+
+We seek to represent this data in a side-by-side bar chart. In order to provide a more digestible, big-picture viewpoint, we classify the bills by the type of gender-affirming care that is targeted: social transition (excluding artistic performance, which Track Trans Legislation categorizes under `Drag Performance`), healthcare/medical transition, drag performances (noting that performing in drag and being transgender are distinct, though sometimes overlapping, categories), and `Other`.
 
 ```{r echo=FALSE}
-ggplot(bills_18_23, aes(fill = Status, x = `Bill Type`)) +
+care_type <- bills_18_23
+care_type$`Bill Type`[care_type$`Bill Type` == "ID Updates"] <- "Social"
+care_type$`Bill Type`[care_type$`Bill Type` == "Nondiscrimination Protections"] <- "Social"
+care_type$`Bill Type`[care_type$`Bill Type` == "Public Facilities"] <- "Social"
+care_type$`Bill Type`[care_type$`Bill Type` == "Religious Freedom"] <- "Social"
+care_type$`Bill Type`[care_type$`Bill Type` == "Schools / Education"] <- "Social"
+care_type$`Bill Type`[care_type$`Bill Type` == "Youth Athletics"] <- "Social"
+ggplot(care_type, aes(fill = Status, x = `Bill Type`)) +
   geom_bar()
-ggplot(bills_18_23, aes(x = Status, fill = `Bill Type`)) +
+ggplot(care_type, aes(x = Status, fill = `Bill Type`)) +
   geom_bar()
+```
+
+In order to better see proportions, we also show a stacked bar chart that scaless every $x$-axis group to $100\%$:
+
+```{r}
+ggplot(care_type, aes(fill = Status, x = `Bill Type`)) +
+  geom_bar(position = "fill")
+ggplot(care_type, aes(x = Status, fill = `Bill Type`)) +
+  geom_bar(position = "fill")
 ```
 
 ### Did the type of bill impact its likelihood of being passed and/or signed?
@@ -142,29 +185,41 @@ $H_A$: The proportions of anti-trans bills passed in each category nationwide we
 
 In order to simplify the following charts and analysis, we combine certain bill statuses into categories: bills that have crossed over, passed, or were signed and enacted have a significant chance of impacting the lives of trans and nonbinary people in that state, while bills that were vetoed, died, or failed have no chance of impacting lives. Bills listed simply as "introduced" may or may not have the support to eventually pass, but since they are not currently impacting the ability of trans/nonbinary people to access healthcare, play sports, etc., we count them as "Not Passed".
 
-```{r}
-bills_mutate <- mutate(bills_18_23, pass = as_factor(ifelse(Status == "Passed" | Status == "Signed/Enacted" | Status == "Crossed Over", "Passed", "Not Passed")))
-bills_mutate
+```{r include = FALSE}
+care_type_mutate <- mutate(care_type, pass = as_factor(ifelse(Status == "Passed" | Status == "Signed/Enacted" | Status == "Crossed Over", "Passed", "Not Passed")))
+care_type_mutate
 ```
 
 Now, we want to see a breakdown of the types of bills that did and didn't pass.
 
 ```{r}
-prop_passed <- tabyl(bills_mutate, `Bill Type`, pass) %>%
+prop_passed <- tabyl(care_type_mutate, `Bill Type`, pass) %>%
   adorn_totals("col") %>%
   as_data_frame
 prop_passed <- prop_passed %>% 
   mutate(Proportion = `Passed`/`Total`) %>%
-  as_data_frame
+  as_data_frame %>%
+  gt() %>% 
+   
+  tab_header(title = "Bill Passage by Bill Type")
 prop_passed
 ```
 
-We plot the proportion of each type of bill that was passed:
+We wish to plot the number and proportion of each type of bill that was passed.
 
 ```{r}
-ggplot(prop_passed, aes(x = `Bill Type`, y = Proportion)) +
-  geom_col()
+ggplot(care_type_mutate, aes(x = `Bill Type`, fill = pass)) +
+  geom_bar(position = "dodge")
 ```
+
+```{r}
+ggplot(care_type_mutate, aes(x = `Bill Type`, fill = pass)) +
+  geom_bar(position = "fill")
+```
+
+From this chart, it appears that bills restricting hormone therapy, puberty blockers, and other medical interventions are actually somewhat less likely to pass than other types of bills, and that while the number of anti-drag bills is substantially smaller than the number of other types of bills, they are somewhat more likely to pass.
+
+Importantly, fewer than $25\%$ of any type of bill since $2018$ has passed. What happens when we break down the bills by year?
 
 ## Is 2023 the Year of Transphobia?
 
@@ -195,7 +250,10 @@ passed_table_pct <- tabyl(passed, `Bill Type`, year) %>%
     adorn_percentages("row") %>%
     adorn_pct_formatting()
 passed_table <- tabyl(passed, `Bill Type`, year) %>%
-  adorn_totals(where = c("row", "col"))
+  adorn_totals(where = c("row", "col")) %>%
+    gt() %>% 
+   
+  tab_header(title = "Passed Bills by Year and Type")
 passed_table
 passed_table_21_22 <- tabyl(passed_21_22, `Bill Type`, year) %>%
   adorn_totals() %>%
@@ -219,18 +277,47 @@ passed_vs_23 <- passed %>%
 passed_vs_23_dodge <- ggplot(passed_vs_23, aes(x = ThisYear, fill = `Bill Type`)) +
   geom_bar(position = "dodge")
 passed_vs_23_dodge
-passed_vs_23 <- ggplot(passed_vs_23, aes(x = ThisYear, fill = `Bill Type`)) +
+passed_vs_23_plot <- ggplot(passed_vs_23, aes(x = ThisYear, fill = `Bill Type`)) +
   geom_bar()
-passed_vs_23
+passed_vs_23_plot
 passed_18_22 <- rbind(passed_18, passed_19, passed_20, passed_21, passed_22)
 passed_18_22_frame <- tabyl(passed_18_22, `Bill Type`) %>% as.data.frame()
 passed_23_frame <- tabyl(passed_23, `Bill Type`) %>% as.data.frame()
+passed_vs_23_mutate <- mutate(passed_vs_23, pass = as_factor(ifelse(Status == "Passed" | Status == "Signed/Enacted" | Status == "Crossed Over", "Passed", "Not Passed")))
 ```
 
-In order to extract information on state legislature convening and adjourning dates, we download the schedule of state legislature meeting dates from the [National Conference of State Legislatures](https://documents.ncsl.org/wwwncsl/About-State-Legislatures/2023_session_calendar_1.pdf) website, then use the [Tabula tool](https://tabula.technology/) to extract the data into a .csv file, making some manual edits. Finally, we load the .csv file into RStudio.
+It appears that 2023 will, indeed, have many anti-trans bills pass than all previous years since 2018 combined (recall that the 2023 data in this analysis only goes through April 2023). What about the *likelihood* of any particular anti-trans bill to pass in 2023 compared to previous years?
 
 ```{r}
-session_calendar <- read_csv("data/session-calendar.csv")
+care_type_vs_23 <- care_type_mutate %>%
+  na.omit() %>%
+  mutate(ThisYear = as_factor(ifelse(year > 2022, 
+                                     "2023", "2018-22")))
+year_passed_plot <- ggplot(care_type_vs_23, aes(x = ThisYear, fill = pass)) +
+  geom_bar(position ="fill")
+year_passed_plot
 ```
 
-## Impact of Anti-Trans Bills on Trans and Nonbinary Mental Health
+There appears to be a slight increase in the proportion of bills of all types that passed in 2023 compared to 2018-22. This difference becomes even more pronounced when we separate 2022:
+
+```{r}
+before_22 <- care_type_mutate %>%
+  na.omit() %>%
+  mutate(after_21 = as_factor(ifelse(year > 2021, 
+                                     "2022-23", "2018-21")))
+before_22_plot <- ggplot(before_22, aes(x = after_21, fill = pass)) +
+  geom_bar(position ="fill")
+before_22_plot
+```
+
+<!-- In order to extract information on state legislature convening and adjourning dates, we download the schedule of state legislature meeting dates from the [National Conference of State Legislatures](https://documents.ncsl.org/wwwncsl/About-State-Legislatures/2023_session_calendar_1.pdf) website, then use the [Tabula tool](https://tabula.technology/) to extract the data into a .csv file, making some manual edits. Finally, we load the .csv file into RStudio. -->
+
+<!-- ```{r} -->
+
+<!-- session_calendar <- read_csv("data/session-calendar.csv") -->
+
+<!-- ``` -->
+
+<!-- ## Impact of Anti-Trans Bills on Trans and Nonbinary Mental Health -->
+
+<!-- ## Queer and Trans Resistance -->
