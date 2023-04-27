@@ -2,7 +2,9 @@
 title: "Anti-Trans Bills in the U.S., 2021-23"
 author: "Kenan Ince"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  word_document: default
+  html_document: default
 bibliography: references.bib
 ---
 
@@ -25,6 +27,8 @@ library(dplyr)
 ```
 
 # Introduction
+
+**Note. *All data (including merged and filtered data) used in the analysis below is open-access and can be found [on GitHub](https://github.com/kaince/anti-trans-bills).***
 
 Americans who identify as lesbian, gay, bisexual, transgender, queer, or many other identities under the queer and trans umbrella (LGBTQ+ folks for short) have long been targeted by conservative groups in the U.S. Nonetheless, the mid-2010s seemed to many to be a time of increasing acceptance of LGBTQ+ identities; the *Time* magazine article "The Transgender Tipping Point," for example, quoted actress and advocate Laverne Cox as saying, "We are in a place now where more and more trans people want to come forward and say, 'This is who I am.' [...] More of us are living visibly and pursuing our dreams visibly, so people can say, 'Oh yeah, I know someone who is trans.' When people have points of reference that are humanizing, that demystifies difference [@katysteinmetz2014]."
 
@@ -51,8 +55,6 @@ We download .csv files from the website [tracktranslegislation.com](https://trac
 For example, bills that were withdrawn, not passed by the end of a given legislative session, explicitly listed as "Dead", or were recommended against by a committee and did not proceed in the legislature were relabeled "Dead" (at least for that year). The exception was when the bill description is specifically listed as "hearing scheduled", "referred to committee", carried over from another year, or otherwise makes clear that the bill is still under consideration, in which case "Introduced" or "Crossed Over" (depending on whether the bill had been passed by at least one chamber) were used.
 
 We only include bills in categories tracked by both data sources; this leaves out, for example, bills preventing localities from passing anti-discrimination ordinances within a state. We use a broad reading of the "religious freedom" category to include bills that allow for people with "sincerely-held religious beliefs" in that state to challenge nondiscrimination laws, discriminate against LGBTQ+ people, refuse to provide healthcare to LGBTQ+ people, refuse to provide adoption services to LGBTQ+ people; discriminate against married LGBTQ+ people, and receive funding for discriminatory student groups at public universities, among others.
-
-**All of the data (including the merged and filtered data used in this analysis) can be found [on GitHub](https://github.com/kaince/anti-trans-bills)).**
 
 ```{r import, echo=FALSE, warning=FALSE, message=FALSE}
 bills_18_20 <- read_excel("data/bills_2018-2020.xlsx", 
@@ -162,6 +164,8 @@ care_type$`Bill Type`[care_type$`Bill Type` == "Public Facilities"] <- "Social"
 care_type$`Bill Type`[care_type$`Bill Type` == "Religious Freedom"] <- "Social"
 care_type$`Bill Type`[care_type$`Bill Type` == "Schools / Education"] <- "Social"
 care_type$`Bill Type`[care_type$`Bill Type` == "Youth Athletics"] <- "Social"
+care_type$`Bill Type`[care_type$`Bill Type` == "Drag Performance"] <- "Drag"
+care_type$`Bill Type`[care_type$`Bill Type` == "Healthcare"] <- "Medical"
 ggplot(care_type, aes(fill = Status, x = `Bill Type`)) +
   geom_bar()
 ggplot(care_type, aes(x = Status, fill = `Bill Type`)) +
@@ -361,3 +365,5 @@ How does the amount of #distress in states that have not passed anti-trans bills
 ## Queer and Trans Resistance
 
 How does the number of posts related to organizing protests, whether online or in-person, on Twitter after the passage of an anti-trans bill in a particular state compare to the number immediately before the passage of that bill?
+
+How does the number of out transgender and nonbinary people elected to public office, featured in the most widely consumed media outlets, generally being visible...related to the number of bills proposed/passed? Possible source: [LGBTQ+ Victory Fund](https://victoryfund.org/) for officeholders
