@@ -3,8 +3,9 @@ title: "Anti-Trans Bills in the U.S., 2021-23"
 author: "Kenan Ince"
 date: "`r Sys.Date()`"
 output:
-  word_document: default
   html_document: default
+  md_document: default
+  word_document: default
 bibliography: references.bib
 ---
 
@@ -276,7 +277,7 @@ passed_year_plot <- ggplot(passed, aes(x = year, fill = `Bill Type`)) +
 passed_year_plot
 ```
 
-Note that these bills **only go through April 21, 2022**. To emphasize the change in the number of bills that have a chance of passing or have already been passed over time, we combine all the years 2017-2022 and compare them to 2023.
+Note that these bills **only go through April 21, 2023**. To emphasize the change in the number of bills that have a chance of passing or have already been passed over time, we combine all the years 2017-2022 and compare them to 2023.
 
 ```{r}
 passed_vs_23 <- passed %>% 
