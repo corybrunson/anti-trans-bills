@@ -182,6 +182,32 @@ ggplot(care_type, aes(x = Status, fill = `Bill Type`)) +
   geom_bar(position = "fill")
 ```
 
+The following [mosaic plot](https://haleyjeppson.github.io/ggmosaic/) combines elements (and benefits) of the unscaled and scaled bar plots by mapping each group's share of the total to the width of its stacked bars rather than its height.
+
+```{r}
+status_levels <- c(
+  "Dead/Failed", "Vetoed", "Introduced",
+  "Crossed Over", "Passed", "Signed/Enacted"
+)
+library(ggmosaic)
+care_type %>%
+  # order bill type by amount
+  mutate(`Bill Type` = fct_infreq(`Bill Type`)) %>%
+  # order bill status by likely impact
+  mutate(Status = factor(Status, levels = status_levels)) %>%
+  # NB: `ggmosaic::product()` cannot handle non-syntactic names
+  select(Type = "Bill Type", Status) %>%
+  count(Type, Status, name = "Count") %>%
+  ggplot() +
+  theme_bw() +
+  geom_mosaic(aes(
+    weight = Count,
+    x = product(Status, Type), fill = Status
+  )) +
+  scale_color_brewer(type = "qual") +
+  guides(fill = "none")
+```
+
 ### Did the type of bill impact its likelihood of being passed and/or signed?
 
 However, the observed trends could simply relate to the fact that the largest *numbers* of bills nationwide were proposed in those categories.
