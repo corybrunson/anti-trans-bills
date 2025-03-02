@@ -1,4 +1,5 @@
 source(here::here("scripts/load.R"))
+source(here::here("scripts/edit.R"))
 
 # restrict to elements needed for review
 bills_18_23 %>% 
@@ -12,9 +13,9 @@ bills_review %>%
   rsample::vfold_cv(v = 3L, strata = `Bill Type`) %>% 
   print() -> bills_split
 
-# write partitions to files
-for (i in seq(nrow(bills_split))) {
-  bills_split$splits[[i]] %>% 
-    rsample::assessment() %>% 
-    write_csv(file = str_c(here::here("data/subset"), "-", i, ".csv"))
-}
+# # write partitions to files
+# for (i in seq(nrow(bills_split))) {
+#   bills_split$splits[[i]] %>% 
+#     rsample::assessment() %>% 
+#     write_csv(file = str_c(here::here("data/subset"), "-", i, ".csv"))
+# }

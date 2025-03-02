@@ -1,4 +1,5 @@
 source(here::here("scripts/load.R"))
+source(here::here("scripts/edit.R"))
 library(patchwork)
 library(ggmosaic)
 
@@ -90,6 +91,8 @@ bills_18_23 %>%
   filter(Group == "Social") %>% 
   # NB: `ggmosaic::product()` cannot handle non-syntactic names
   mutate(Type = `Bill Type`) %>% 
+  # NB: `geom_mosaic()` adjusts ordinate only when no groups are empty
+  mutate(Type = fct_drop(Type)) %>%
   count(Type, Status, name = "Count") %>%
   ggplot() +
   geom_mosaic(aes(

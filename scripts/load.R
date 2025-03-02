@@ -2,6 +2,10 @@ library(tidyverse)
 library(readxl)
 library(RColorBrewer)
 
+# page dimensions
+textwidth = 8
+phi <- (1 + sqrt(5)) / 2
+
 # import and pre-process data
 
 state_abb_name <- c(setNames(state.abb, state.name), `United States` = "USA")
@@ -9,19 +13,24 @@ status_levels <- c(
   "Dead/Failed", "Vetoed", "Introduced",
   "Crossed Over", "Passed", "Signed/Enacted"
 )
+# ACLU data
 read_excel(
   "data/bills_2018-2020.xlsx", 
   col_types = c("date", "text", "text", "text", "text", "text", "numeric")
 ) %>% 
   # standardize variables
   mutate(Date = as_date(Date)) %>% 
+  # anti_join(data.frame(State = state_abb_name))
+  mutate(State = str_squish(State)) %>%
   mutate(`Bill Link` = as.character(`Bill Link`)) %>% 
   print() -> bills_18_20
+# TTL data
 bind_rows(
   read_csv("data/2021 Anti-Trans Bills _ Track Trans Legislation.csv"),
   read_csv("data/2022 Anti-Trans Bills _ Track Trans Legislation.csv"),
   read_csv("data/2023 Anti-Trans Bills _ Track Trans Legislation.csv")
 ) %>% 
+  # anti_join(data.frame(State = names(state_abb_name)))
   # standardize variables
   mutate(State = state_abb_name[State]) %>% 
   print() -> bills_21_23
@@ -39,6 +48,8 @@ bind_rows(bills_18_20, bills_21_23) %>%
   mutate(Status = factor(str_trim(Status), levels = status_levels)) %>% 
   # sort chronologically
   arrange(Date) %>% 
+  # enable joins to correction data
+  mutate(Bill = str_squish(Bill)) %>%
   print() -> bills_18_23
 
 # new palettes
@@ -48,6 +59,3 @@ clust_pal <- c(
   `1` = rgb(61, 153, 112, maxColorValue = 255),
   `2` = rgb(255, 65, 54, maxColorValue = 255)
 )
-# page dimensions
-textwidth = 8
-phi <- (1 + sqrt(5)) / 2
