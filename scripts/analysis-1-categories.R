@@ -28,6 +28,21 @@ bills_18_23 %>%
   print() -> bills_18_23
 group_pal <- brewer.pal(n_distinct(bills_18_23$Group), name = "Accent")
 
+# overall type versus status
+
+bills_18_23 %>%
+  count(`Bill Type`, Status, name = "Count") %>%
+  pivot_wider(
+    id_cols = `Bill Type`,
+    names_from = Status, values_from = Count
+  ) %>%
+  mutate(across(where(is.integer), \(x) ifelse(is.na(x), 0L, x))) %>%
+  rowwise() %>%
+  mutate(Total = sum(c_across(where(is.integer)))) %>%
+  ungroup() %>%
+  bind_rows(summarize(., across(where(is.integer), sum))) %>%
+  knitr::kable()
+
 # bill types over time
 
 # chronological bar plot, coarse categorization
